@@ -32,6 +32,7 @@ class TaskModel extends BaseModel {
 		super();
 		this.title = title || 'no title';
 		this.done = done ? true : false;
+		this.key = Date.now() + Math.random();
 	}
 }
 TaskModel.addModel();
@@ -122,7 +123,8 @@ class TaskViewArea extends BaseComponent {
 	// レンダー
 	render() {
 		const { tasks } = this.props;
-		return <ul> {tasks.map(task => < TaskViewEntry task={task} />)} </ul>;
+		return <ul> {tasks.map(task =>
+			<TaskViewEntry key={task.key} task={task} />)} </ul>;
 	}
 }
 
@@ -135,10 +137,8 @@ class TaskViewEntry extends BaseComponent {
 			color: task.done ? 'lightgray' : 'black',
 			textDecoration: task.done ? 'line-through' : 'none'
 		};
-		return <li style={style} >
-			<input type="checkbox"
-				checked={task.done}
-				onClick={this.onToggleDone} />
+		return <li style={style} onClick={this.onToggleDone} >
+			<input type="checkbox" checked={task.done} />
 			{task.title}
 		</li>;
 	}
