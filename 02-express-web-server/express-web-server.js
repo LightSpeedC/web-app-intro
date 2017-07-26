@@ -5,8 +5,8 @@ const express = require('express');
 const app = express();
 const serveIndex = require('serve-index');
 
-const PORT = process.env.PORT || 3000;
 const WEB_SVC_DIR = path.resolve(process.argv[2] || '.');
+const PORT = Number(process.argv[3] || process.env.PORT || 3000);
 
 app.use(express.static(WEB_SVC_DIR));
 app.use(serveIndex(WEB_SVC_DIR, {icons: true}));
