@@ -1,32 +1,28 @@
-
-// 基底コンポーネント
-class BaseComponent extends React.Component { }
+// todo-react.jsx
 
 // 基底モデル
 class BaseModel {
-	static type = 'Base';
 	static modelClasses = {};
 	// モデル化
-	static toModel(model) {
+	static create(model) {
 		const Model = this.modelClasses[model.type];
 		if (Model) return new Model(model);
 		throw new TypeError('type "' + model.type + '" unknown');
 	}
 	// モデル・クラスの追加
 	static addModel() {
-		if (this.type === BaseModel.type)
-			throw new TypeError('Model must have static "type" property');
-		this.modelClasses[this.type] = this;
+		if (!this.name || this.name === BaseModel.name)
+			throw new TypeError('Model must have "name" property');
+		this.modelClasses[this.name] = this;
 	}
 	// JSON化
 	toJSON() {
-		return Object.assign({ type: this.constructor.type }, this);
+		return Object.assign({ type: this.constructor.name }, this);
 	}
 }
 
 // モデル: TaskModel
 class TaskModel extends BaseModel {
-	static type = 'Task';
 	// コンストラクタ
 	constructor({ title, done }) {
 		super();
@@ -37,6 +33,9 @@ class TaskModel extends BaseModel {
 }
 TaskModel.addModel();
 
+// 基底コンポーネント
+class BaseComponent extends React.Component { }
+
 // コンポーネント: TaskApp
 class TaskApp extends BaseComponent {
 	// コンストラクタ
@@ -46,45 +45,50 @@ class TaskApp extends BaseComponent {
 			tasks: [
 				new TaskModel({ title: 'タスク1' }),
 				new TaskModel({ title: 'タスク2', done: true }),
-				BaseModel.toModel({ type: 'Task', title: 'タスク3' }),
-				BaseModel.toModel({ type: 'Task', title: 'タスク4', done: true }),
+				BaseModel.create({ type: 'TaskModel', title: 'タスク3' }),
+				BaseModel.create({ type: 'TaskModel', title: 'タスク4', done: true }),
 			],
 		};
 	}
 	// コンポーネントがマウントされた時
-	componentDidMount() {
-		debugRedraw = this.debugRedraw;
-	}
+	// componentDidMount() { debugRedraw = this.debugRedraw; }
 	// コンポーネントがアンマウントされる時
-	componentWillUnmount() {
-		debugRedraw = () => { };
-	}
-	// レンダー
-	render() {
-		const { tasks } = this.state;
-		return <div>
-			<b onClick={this.onToggleDebug}>Todo App</b>
-			<TaskFormArea onAddTask={this.onAddTask} />
-			<TaskViewArea tasks={tasks} />
-			<button onClick={this.onRemoveCompleteTasks} children="完了タスクを削除" />
-			{debugFlag && <pre style={{ backgroundColor: 'lightgray' }}>{JSON.stringify(tasks, null, '  ')}</pre>}
-		</div>;
-	}
+	// componentWillUnmount() { debugRedraw = () => { }; }
 	// タスクの追加
-	onAddTask = (title) =>
+	// arrow function 形式で this を bind (React)
+	onAddTask = title =>
 		this.setState(s => ({ tasks: s.tasks.concat(new TaskModel({ title })) }));
 	// 完了タスクを削除
+	// arrow function 形式で this を bind (React)
 	onRemoveCompleteTasks = () =>
 		this.setState(s => ({ tasks: s.tasks.filter(task => !task.done) }));
 	// デバッグをトグル
 	onToggleDebug = () => {
 		debugFlag = !debugFlag;
-		debugRedraw();
+		this.setState({});
+		// debugRedraw();
 	};
 	// 再表示
-	debugRedraw = () => {
-		this.setState({});
-	};
+	// arrow function 形式で this を bind (React)
+	onChanged = () => this.setState({});
+	// debugRedraw = () => this.setState({});
+	// レンダー
+	render() {
+		const { tasks } = this.state;
+		return <div>
+			<b onClick={this.onToggleDebug}>Todo App (React)</b>
+			<TaskFormArea
+				onAddTask={this.onAddTask} />
+			<TaskViewArea
+				onChanged={this.onChanged} /* 子の変更を親に伝えるため (React) */
+				tasks={tasks} />
+			<button type="button"
+				disabled={tasks.every(task => !task.done)}
+				onClick={this.onRemoveCompleteTasks}
+				>完了タスクを削除</button>
+			{debugFlag && <pre style={{ backgroundColor: 'lightgray' }}>{JSON.stringify(tasks, null, '  ')}</pre>}
+		</div>;
+	}
 }
 
 // コンポーネント: TaskFormArea
@@ -94,28 +98,33 @@ class TaskFormArea extends BaseComponent {
 		super(props);
 		this.state = { title: '' };
 	}
-	// レンダー
-	render() {
-		const { onChange } = this.props;
-		const { title } = this.state;
-		return <div>
-			タスク: <input value={title}
-				onChange={this.onChangeTitle}
-				onKeyDown={this.onKeyDownTitle} />
-			<button type="button" children="追加" onClick={this.onAddTask} />
-		</div>;
-	}
 	// タイトルでキー入力
-	onKeyDownTitle = e => {
-		if (e.keyCode === 13 && this.state.title) this.onAddTask();
-	};
+	// arrow function 形式で this を bind (React)
+	onKeyDownTitle = e =>
+		e.key === 'Enter' || e.keyCode === 13 ? this.onAddTask() : void 0;
 	// タイトル入力
+	// arrow function 形式で this を bind (React)
 	onChangeTitle = e => this.setState({ title: e.target.value });
 	// タスクの追加
+	// arrow function 形式で this を bind (React)
 	onAddTask = () => {
+		this.state.title &&
 		(this.props.onAddTask)(this.state.title);
 		this.setState({ title: '' });
 	};
+	// レンダー
+	render() {
+		const { title } = this.state;
+		return <div>
+			タスク: <input type="text" value={title}
+				onChange={this.onChangeTitle}
+				onKeyDown={this.onKeyDownTitle} />
+			<button type="button"
+				disabled={!title}
+				onClick={this.onAddTask}
+				>追加</button>
+		</div>;
+	}
 }
 
 // コンポーネント: TaskViewArea
@@ -123,13 +132,29 @@ class TaskViewArea extends BaseComponent {
 	// レンダー
 	render() {
 		const { tasks } = this.props;
-		return <ul> {tasks.map(task =>
-			<TaskViewEntry key={task.key} task={task} />)} </ul>;
+		const { onChanged } = this.props; // 子の変更を親に伝えるため (React)
+		return <ul>
+			{tasks.map(task =>
+				<TaskViewEntry
+					onChanged={onChanged} /* 子の変更を親に伝えるため (React) */
+					key={task.key} task={task} />)}
+		</ul>;
 	}
 }
 
 // コンポーネント: TaskViewEntry
 class TaskViewEntry extends BaseComponent {
+	// 終了フラグをトグル
+	// arrow function 形式で this を bind (React)
+	onToggleDone = () => {
+		const { task } = this.props;
+		const { onChanged } = this.props; // 子の変更を親に伝えるため (React)
+		task.done = !task.done;
+		onChanged && onChanged(); // 子の変更を親に伝えるため (React)
+		// this.setState({});
+		// ↑stateは無いが再表示が必要 親がrenderするなら不要 (React)
+		// debugRedraw();
+	};
 	// レンダー
 	render() {
 		const { task } = this.props;
@@ -142,18 +167,11 @@ class TaskViewEntry extends BaseComponent {
 			{task.title}
 		</li>;
 	}
-	// 終了フラグをトグル
-	onToggleDone = () => {
-		const { task } = this.props;
-		task.done = !task.done;
-		this.setState({});
-		debugRedraw();
-	};
 }
 
 // デバッグフラグは、全体から見えるところに置く
 let debugFlag = false;
-let debugRedraw = () => { };
+// let debugRedraw = () => { };
 
 // レンダー
 ReactDOM.render(<TaskApp />, taskApp);
