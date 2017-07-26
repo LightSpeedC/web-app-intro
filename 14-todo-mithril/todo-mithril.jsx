@@ -1,33 +1,30 @@
-/* @jsx m */
+// todo-mithril.jsx
 
-// 基底コンポーネント
-class BaseComponent { }
+/* @jsx m */
 
 // 基底モデル
 class BaseModel {
-	static type = 'Base';
 	static modelClasses = {};
 	// モデル化
-	static toModel(model) {
+	static create(model) {
 		const Model = this.modelClasses[model.type];
 		if (Model) return new Model(model);
 		throw new TypeError('type "' + model.type + '" unknown');
 	}
 	// モデル・クラスの追加
 	static addModel() {
-		if (this.type === BaseModel.type)
-			throw new TypeError('Model must have static "type" property');
-		this.modelClasses[this.type] = this;
+		if (!this.name || this.name === BaseModel.name)
+			throw new TypeError('Model must have "name" property');
+		this.modelClasses[this.name] = this;
 	}
 	// JSON化
 	toJSON() {
-		return Object.assign({ type: this.constructor.type }, this);
+		return Object.assign({ type: this.constructor.name }, this);
 	}
 }
 
 // モデル: TaskModel
 class TaskModel extends BaseModel {
-	static type = 'Task';
 	// コンストラクタ
 	constructor({ title, done }) {
 		super();
@@ -42,15 +39,15 @@ TaskModel.addModel();
 const TaskApp = {
 	// コンストラクタ
 	oninit(vnode) {
-		// this === vnode.state
+		// thisはvnode.stateなので、自由にプロパティを使って良い (Mithril)
 		this.tasks = [
 			new TaskModel({ title: 'タスク1' }),
 			new TaskModel({ title: 'タスク2', done: true }),
-			BaseModel.toModel({ type: 'Task', title: 'タスク3' }),
-			BaseModel.toModel({ type: 'Task', title: 'タスク4', done: true }),
+			BaseModel.create({ type: 'TaskModel', title: 'タスク3' }),
+			BaseModel.create({ type: 'TaskModel', title: 'タスク4', done: true }),
 		];
 		// タスクの追加
-		this.onAddTask = (title) =>
+		this.onAddTask = title =>
 			this.tasks.push(new TaskModel({ title }));
 		// 完了タスクを削除
 		this.onRemoveCompleteTasks = () =>
@@ -61,45 +58,53 @@ const TaskApp = {
 	},
 	// レンダー
 	view(vnode) {
+		// thisはvnode.stateなので、自由にプロパティを使って良い (Mithril)
 		const { tasks } = this;
 		return <div>
-			<b onclick={this.onToggleDebug}>Todo App</b>
-			<TaskFormArea onAddTask={this.onAddTask} />
-			<TaskViewArea tasks={tasks} />
-			<button onclick={this.onRemoveCompleteTasks}>完了タスクを削除</button>
+			<b onclick={this.onToggleDebug}>Todo App (Mithril)</b>
+			<TaskFormArea
+				onAddTask={this.onAddTask} />
+			<TaskViewArea
+				tasks={tasks} />
+			<button type="button"
+				disabled={tasks.every(task => !task.done)}
+				onclick={this.onRemoveCompleteTasks}
+				>完了タスクを削除</button>
 			{debugFlag && <pre style={{ backgroundColor: 'lightgray' }}>{JSON.stringify(tasks, null, '  ')}</pre>}
 		</div>;
 	},
 };
 
-
 // コンポーネント: TaskFormArea
 const TaskFormArea = {
 	// コンストラクタ
 	oninit(vnode) {
-		// this === vnode.state
+		// thisはvnode.stateなので、自由にプロパティを使って良い (Mithril)
 		this.title = '';
 		// タイトルでキー入力
-		this.onKeyDownTitle = (e) =>
-			e.keyCode === 13 && this.onAddTask();
+		this.onKeyDownTitle = e =>
+			e.key === 'Enter' || e.keyCode === 13 ? this.onAddTask() : void 0;
 		// タイトル入力
-		this.onChangeTitle = (e) =>
-			this.title = e.target.value;
+		this.onChangeTitle = e => this.title = e.target.value;
 		// タスクの追加
 		this.onAddTask = () => {
-			if (this.title)
-				(vnode.attrs.onAddTask)(this.title);
+			this.title &&
+			(vnode.attrs.onAddTask)(this.title);
 			this.title = '';
-		};
+		}
 	},
 	// レンダー
 	view(vnode) {
-		// const { onChange } = vnode.attrs;
+		// thisはvnode.stateなので、自由にプロパティを使って良い (Mithril)
+		const { title } = this;
 		return <div>
-			タスク: <input value={this.title}
+			タスク: <input type="text" value={title}
 				oninput={this.onChangeTitle}
 				onkeydown={this.onKeyDownTitle} />
-			<button type="button" onclick={this.onAddTask}>追加</button>
+			<button type="button"
+				disabled={!title}
+				onclick={this.onAddTask}
+				>追加</button>
 		</div>;
 	},
 };
@@ -109,9 +114,12 @@ const TaskViewArea = {
 	// レンダー
 	view(vnode) {
 		const { tasks } = vnode.attrs;
-		return <ul> {tasks.map(task =>
-			// keyを指定しないとコンポーネントとDOMの不一致が起こる可能性がある
-			<TaskViewEntry key={task.key} task={task} />)} </ul>;
+		return <ul>
+			{tasks.map(task =>
+				<TaskViewEntry
+					/* keyを指定しないとコンポーネントとDOMの不一致が起こる可能性がある (Mithril) */
+					key={task.key} task={task} />)}
+		</ul>;
 	},
 };
 
@@ -119,6 +127,7 @@ const TaskViewArea = {
 const TaskViewEntry = {
 	// コンストラクタ
 	oninit(vnode) {
+		// 外から指定されたプロパティはvnode.attrsにあるがclosureを使うと便利 (Mithril)
 		const { task } = vnode.attrs;
 		// 終了フラグをトグル
 		this.onToggleDone = () =>
@@ -144,15 +153,3 @@ let debugFlag = false;
 // レンダー
 // m.render(taskApp, <TaskApp />);
 m.mount(taskApp, TaskApp);
-
-/*
-let count = 0; // 変数を追加
-const Hello = { view() {
-	return <div>
-		<h1 className="title">最初のMithrilアプリケーション</h1>
-		<button onclick={() => count++}>{count} クリック</button>
-	</div>;
-} };
-
-m.mount(taskApp, Hello);
-*/
