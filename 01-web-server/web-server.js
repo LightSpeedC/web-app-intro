@@ -3,8 +3,9 @@
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
-const PORT = process.env.PORT || 3000;
+
 const WEB_SVC_DIR = path.resolve(process.argv[2] || '.');
+const PORT = Number(process.argv[3] || process.env.PORT || 3000);
 
 http.createServer((req, res) => {
 	let uri = req.url;
