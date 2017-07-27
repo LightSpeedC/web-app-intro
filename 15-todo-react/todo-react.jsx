@@ -36,6 +36,12 @@ TaskModel.addModel();
 // 基底コンポーネント
 class BaseComponent extends React.Component { }
 
+const DISP_MODES = [
+	{mode: 0, name: '全て', filter: task => true},
+	{mode: 1, name: '未了', filter: task => !task.done},
+	{mode: 2, name: '完了', filter: task => task.done},
+];
+
 // コンポーネント: TaskApp
 class TaskApp extends BaseComponent {
 	// コンストラクタ
@@ -48,6 +54,7 @@ class TaskApp extends BaseComponent {
 				BaseModel.create({ type: 'TaskModel', title: 'タスク3' }),
 				BaseModel.create({ type: 'TaskModel', title: 'タスク4', done: true }),
 			],
+			dispMode: 0, // 0: 全て, 1: 未了, 2: 完了
 		};
 	}
 	// コンポーネントがマウントされた時
@@ -62,6 +69,12 @@ class TaskApp extends BaseComponent {
 	// arrow function 形式で this を bind (React)
 	onRemoveCompleteTasks = () =>
 		this.setState(s => ({ tasks: s.tasks.filter(task => !task.done) }));
+	// 全て完了/未了
+	onRevertTasks = () => {
+		const done = !this.state.tasks.every(task => task.done);
+		this.state.tasks.forEach(task => task.done = done);
+		this.setState({});
+	};
 	// デバッグをトグル
 	onToggleDebug = () => {
 		debugFlag = !debugFlag;
@@ -74,18 +87,35 @@ class TaskApp extends BaseComponent {
 	// debugRedraw = () => this.setState({});
 	// レンダー
 	render() {
-		const { tasks } = this.state;
+		const { tasks, dispMode } = this.state;
 		return <div>
 			<b onClick={this.onToggleDebug}>Todo App (React)</b>
 			<TaskFormArea
 				onAddTask={this.onAddTask} />
+			<hr/>
+			<div>
+				表示：
+				{DISP_MODES.map(x =>
+					<button type="button"
+						onClick={() => this.setState({dispMode: x.mode})}
+						>{dispMode === x.mode && '★'}{x.name}{tasks.filter(x.filter).length}</button>
+				)}
+			</div>
+			<div>
+				操作：
+				<button type="button"
+					disabled={!tasks.length}
+					onClick={this.onRevertTasks}
+					>全て完了/未了</button>
+				<button type="button"
+					disabled={tasks.every(task => !task.done)}
+					onClick={this.onRemoveCompleteTasks}
+					>完了タスクを削除</button>
+				<hr/>
+			</div>
 			<TaskViewArea
 				onChanged={this.onChanged} /* 子の変更を親に伝えるため (React) */
-				tasks={tasks} />
-			<button type="button"
-				disabled={tasks.every(task => !task.done)}
-				onClick={this.onRemoveCompleteTasks}
-				>完了タスクを削除</button>
+				tasks={tasks.filter(DISP_MODES[dispMode].filter)} />
 			{debugFlag && <pre style={{ backgroundColor: 'lightgray' }}>{JSON.stringify(tasks, null, '  ')}</pre>}
 		</div>;
 	}
