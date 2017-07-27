@@ -35,6 +35,12 @@ class TaskModel extends BaseModel {
 }
 TaskModel.addModel();
 
+const DISP_MODES = [
+	{mode: 0, name: '全て', filter: task => true},
+	{mode: 1, name: '未了', filter: task => !task.done},
+	{mode: 2, name: '完了', filter: task => task.done},
+];
+
 // コンポーネント: TaskApp
 const TaskApp = {
 	// コンストラクタ
@@ -46,12 +52,18 @@ const TaskApp = {
 			BaseModel.create({ type: 'TaskModel', title: 'タスク3' }),
 			BaseModel.create({ type: 'TaskModel', title: 'タスク4', done: true }),
 		];
+		this.dispMode = 0; // 0: 全て, 1: 未了, 2: 完了
 		// タスクの追加
 		this.onAddTask = title =>
 			this.tasks.push(new TaskModel({ title }));
 		// 完了タスクを削除
 		this.onRemoveCompleteTasks = () =>
 			this.tasks = this.tasks.filter(task => !task.done);
+		// 全て完了/未了
+		this.onRevertTasks = () => {
+			const done = !this.tasks.every(task => task.done);
+			this.tasks.forEach(task => task.done = done);
+		};
 		// デバッグをトグル
 		this.onToggleDebug = () =>
 			debugFlag = !debugFlag;
@@ -59,17 +71,34 @@ const TaskApp = {
 	// レンダー
 	view(vnode) {
 		// thisはvnode.stateなので、自由にプロパティを使って良い (Mithril)
-		const { tasks } = this;
+		const { tasks, dispMode } = this;
 		return <div>
 			<b onclick={this.onToggleDebug}>Todo App (Mithril)</b>
 			<TaskFormArea
 				onAddTask={this.onAddTask} />
+			<hr/>
+			<div>
+				表示：
+				{DISP_MODES.map(x =>
+					<button type="button"
+						onclick={() => this.dispMode = x.mode}
+						>{dispMode === x.mode && '★'}{x.name}{tasks.filter(x.filter).length}</button>
+				)}
+			</div>
+			<div>
+				操作：
+				<button type="button"
+					disabled={!tasks.length}
+					onclick={this.onRevertTasks}
+					>全て完了/未了</button>
+				<button type="button"
+					disabled={tasks.every(task => !task.done)}
+					onclick={this.onRemoveCompleteTasks}
+					>完了タスクを削除</button>
+			</div>
+			<hr/>
 			<TaskViewArea
-				tasks={tasks} />
-			<button type="button"
-				disabled={tasks.every(task => !task.done)}
-				onclick={this.onRemoveCompleteTasks}
-				>完了タスクを削除</button>
+				tasks={tasks.filter(DISP_MODES[dispMode].filter)} />
 			{debugFlag && <pre style={{ backgroundColor: 'lightgray' }}>{JSON.stringify(tasks, null, '  ')}</pre>}
 		</div>;
 	},
