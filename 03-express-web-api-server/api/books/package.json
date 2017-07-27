@@ -1,0 +1,5 @@
+{
+  "name": "books",
+  "main": "books.js",
+  "private": true
+}
