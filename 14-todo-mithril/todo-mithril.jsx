@@ -13,9 +13,9 @@ class BaseModel {
 	}
 	// モデル・クラスの追加
 	static addModel() {
-		if (!this.name || this.name === BaseModel.name)
-			throw new TypeError('Model must have "name" property');
-		this.modelClasses[this.name] = this;
+		if (!this.type)
+			throw new TypeError('Model must have "type" property');
+		this.modelClasses[this.type] = this;
 	}
 	// JSON化
 	toJSON() {
@@ -25,6 +25,7 @@ class BaseModel {
 
 // モデル: TaskModel
 class TaskModel extends BaseModel {
+	static type = 'TaskModel';
 	// コンストラクタ
 	constructor({ title, done }) {
 		super();
